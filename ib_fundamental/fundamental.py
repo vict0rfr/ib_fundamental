@@ -35,7 +35,6 @@ from ib_fundamental.objects import (
     AnalystForecast,
     BalanceSheetSet,
     CashFlowSet,
-    CompanyInfo,
     Dividend,
     DividendPerShare,
     EarningsPerShare,
@@ -81,70 +80,6 @@ class FundamentalData:
 
     def __enter__(self):
         return self
-
-    @property
-    def income_annual(self) -> IncomeSet:
-        """
-        income_annual
-        """
-        try:
-            return self.__income_annual
-        except AttributeError:
-            self.__income_annual: IncomeSet = self.parser.get_fin_statement(
-                statement="INC", period="annual"
-            )
-            return self.__income_annual
-
-    @property
-    def income_quarter(self) -> IncomeSet:
-        """income_quarter"""
-        try:
-            return self.__income_quarter
-        except AttributeError:
-            self.__income_quarter: IncomeSet = self.parser.get_fin_statement(
-                statement="INC", period="quarter"
-            )
-            return self.__income_quarter
-
-    @property
-    def balance_annual(self) -> BalanceSheetSet:
-        try:
-            return self.__balance_annual
-        except AttributeError:
-            self.__balance_annual: BalanceSheetSet = self.parser.get_fin_statement(
-                statement="BAL", period="annual"
-            )
-            return self.__balance_annual
-
-    @property
-    def balance_quarter(self) -> BalanceSheetSet:
-        try:
-            return self.__balance_quarter
-        except AttributeError:
-            self.__balance_quarter: BalanceSheetSet = self.parser.get_fin_statement(
-                statement="BAL", period="quarter"
-            )
-            return self.__balance_quarter
-
-    @property
-    def cashflow_annual(self) -> CashFlowSet:
-        try:
-            return self.__cashflow_annual
-        except AttributeError:
-            self.__cashflow_annual: CashFlowSet = self.parser.get_fin_statement(
-                statement="CAS", period="annual"
-            )
-            return self.__cashflow_annual
-
-    @property
-    def cashflow_quarter(self) -> CashFlowSet:
-        try:
-            return self.__cashflow_quarter
-        except AttributeError:
-            self.__cashflow_quarter: CashFlowSet = self.parser.get_fin_statement(
-                statement="CAS", period="quarter"
-            )
-            return self.__cashflow_quarter
 
     @property
     def ownership_report(self) -> OwnershipReport:
@@ -279,14 +214,6 @@ class FundamentalData:
             self.__fy_actuals: list[ForwardYear] = self.parser.get_fy_actuals()
             return self.__fy_actuals
 
-    @property
-    def company_info(self) -> CompanyInfo:
-        try:
-            return self.__company_info
-        except AttributeError:
-            self.__company_info: CompanyInfo = self.parser.get_company_info()
-            return self.__company_info
-
 
 class CompanyFinancials:
     """Company Financials"""
@@ -308,49 +235,6 @@ class CompanyFinancials:
     def __repr__(self):
         cls_name = self.__class__.__qualname__
         return f"{cls_name}(symbol={self.data.symbol!r},IB={self.data.client.ib!r})"
-
-    @property
-    def balance_quarter(self) -> DataFrame | None:
-        """Quarterly balance statement"""
-        if self.data.balance_quarter:
-            mapping = self.data.parser.get_map_items("BAL")
-            return build_statement(self.data.balance_quarter, "BAL", mapping)
-        return None
-
-    @property
-    def balance_annual(self) -> DataFrame | None:
-        if self.data.balance_annual:
-            mapping = self.data.parser.get_map_items("BAL")
-            return build_statement(self.data.balance_annual, "BAL", mapping)
-        return None
-
-    @property
-    def income_quarter(self) -> DataFrame | None:
-        if self.data.income_quarter:
-            mapping = self.data.parser.get_map_items("INC")
-            return build_statement(self.data.income_quarter, "INC", mapping)
-        return None
-
-    @property
-    def income_annual(self) -> DataFrame | None:
-        if self.data.income_annual:
-            mapping = self.data.parser.get_map_items("INC")
-            return build_statement(self.data.income_annual, "INC", mapping)
-        return None
-
-    @property
-    def cashflow_quarter(self) -> DataFrame | None:
-        if self.data.cashflow_annual:
-            mapping = self.data.parser.get_map_items("CAS")
-            return build_statement(self.data.cashflow_quarter, "CAS", mapping)
-        return None
-
-    @property
-    def cashflow_annual(self) -> DataFrame | None:
-        if self.data.cashflow_annual:
-            mapping = self.data.parser.get_map_items("CAS")
-            return build_statement(self.data.cashflow_annual, "CAS", mapping)
-        return None
 
     @property
     def dividends(self) -> DataFrame | None:
@@ -416,12 +300,6 @@ class CompanyFinancials:
     def analyst_forecast(self) -> DataFrame | None:
         if self.data.analyst_forecast:
             return to_dataframe([self.data.analyst_forecast]).T
-        return None
-
-    @property
-    def company_information(self) -> DataFrame | None:
-        if self.data.company_info:
-            return to_dataframe([self.data.company_info]).T
         return None
 
     @property

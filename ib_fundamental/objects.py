@@ -30,7 +30,6 @@ StatementCode = Literal["INC", "BAL", "CAS"]
 PeriodType = Literal["annual", "quarter"]
 StatementPeriod = Literal["Interim", "Annual"]
 ReportType = Literal[
-    "ReportsFinStatements",
     "ReportsFinSummary",
     "ReportSnapshot",
     "RESC",

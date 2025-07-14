@@ -44,17 +44,6 @@ class XMLReport:
         return f"{cls_name}(ib_client={self.client!r})"
 
     @property
-    def fin_statements(self) -> Element:
-        """Request financial statements"""
-        try:
-            return self.__fin_statements
-        except AttributeError:
-            self.__fin_statements: Element = fromstring(
-                self.client.ib_req_fund("ReportsFinStatements")
-            )
-            return self.__fin_statements
-
-    @property
     def fin_summary(self) -> Element:
         """request financial summary"""
         try:

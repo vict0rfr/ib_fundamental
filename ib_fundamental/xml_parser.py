@@ -25,16 +25,15 @@ __all__ = [
     "XMLParser",
 ]
 
-from datetime import date, datetime
+from datetime import datetime
 from functools import lru_cache
-from typing import Literal, Optional
+from typing import Literal
 
 import pandas as pd
 
 from .ib_client import IBClient
 from .objects import (
     AnalystForecast,
-    CompanyInfo,
     Dividend,
     DividendPerShare,
     EarningsPerShare,
@@ -42,13 +41,8 @@ from .objects import (
     OwnershipCompany,
     OwnershipDetails,
     OwnershipReport,
-    PeriodType,
     RatioSnapshot,
     Revenue,
-    StatementCode,
-    StatementMap,
-    StatementMapping,
-    statement_map,
 )
 from .utils import camel_to_snake
 from .xml_report import XMLReport
@@ -69,117 +63,7 @@ class XMLParser:
         cls_name = self.__class__.__qualname__
         return f"{cls_name}(ib_client={self.xml_report.client!r}"
 
-    def get_fin_statement(
-        self,
-        statement: StatementCode = "INC",
-        period: PeriodType = "annual",
-        end_date: Optional[date] = None,
-    ):
-        """
-
-        Parameters
-        ----------
-        period : 'annual' OR 'quarter', mandatory.
-            statement period, annual or quarter. The default is 'annual'.
-        statement : 'INC', 'BAL'or 'CAS'. mandatory.
-            the statement to be generated
-        end_date : 'YYYY-MM-DD' str format, optional
-            statement date. The default is None.
-
-        Raises
-        ------
-        Exception
-            if period parameter is missing
-
-        Returns
-        -------
-        list
-            DESCRIPTION.
-
-        """
-        xpath = {
-            "annual": ".//AnnualPeriods/FiscalPeriod",
-            "quarter": ".//InterimPeriods/FiscalPeriod",
-            "xp_fiscal_period": '[@EndDate="{0}"]/Statement[@Type="{1}"]/lineItem',
-        }
-
-        # statement type
-        xp_statement = statement
-        # period type
-        xp_line = xpath[period]
-        # filter by end_date
-        if end_date is not None:
-            xp_line_ed = xp_line + f'[@EndDate="{end_date.isoformat()}"]'
-        else:
-            xp_line_ed = xp_line
-
-        fp = self.xml_report.fin_statements.findall(xp_line_ed)
-
-        if period == "quarter":
-            fperiods = [
-                {
-                    "period": fperiod.attrib["Type"],
-                    "end_date": fperiod.attrib["EndDate"],
-                    "fiscal_year": fperiod.attrib["FiscalYear"],
-                    "period_number": fperiod.attrib["FiscalPeriodNumber"],
-                    "date_10Q": fperiod.find(".//Source").attrib["Date"],
-                }
-                for fperiod in fp
-            ]
-        else:
-            fperiods = [
-                {
-                    "period": fperiod.attrib["Type"],
-                    "end_date": fperiod.attrib["EndDate"],
-                    "fiscal_year": fperiod.attrib["FiscalYear"],
-                    "date_10K": fperiod.find(".//Source").attrib["Date"],
-                }
-                for fperiod in fp
-            ]
-
-        fs = []
-
-        for p in fperiods:
-            if end_date is not None:
-                ed = end_date.isoformat()
-            else:
-                ed = p["end_date"]
-
-            xp = xpath["xp_fiscal_period"].format(ed, xp_statement)
-            fs_line = self.xml_report.fin_statements.findall(xp_line + xp)
-
-            fs.append({i.attrib["coaCode"].lower(): float(i.text) for i in fs_line})
-
-        return [statement_map[statement](**i, **j) for i, j in zip(fperiods, fs)]
-
     @lru_cache(maxsize=4)
-    def get_map_items(
-        self, statement: Optional[StatementCode] = None
-    ) -> StatementMapping:
-        """
-        mapItems
-
-        Returns
-        -------
-        list of dict with FinStatement name mapping
-        """
-
-        fa = ".//COAMap/"
-        fs = self.xml_report.fin_statements.findall(fa)
-
-        _map_items: StatementMapping = [
-            StatementMap(
-                coa_item=mi.attrib["coaItem"],
-                map_item=mi.text,
-                statement_type=mi.attrib["statementType"],
-                line_id=int(mi.attrib["lineID"]),
-            )
-            for mi in fs
-            if statement is None
-            or (statement is not None and mi.attrib["statementType"] == statement)
-        ]
-        return _map_items
-
     def get_ownership_report(self) -> OwnershipReport:
         """Ownership Report"""
         fs = self.xml_report.ownership
@@ -402,34 +286,3 @@ class XMLParser:
             for p in a.iter("FYPeriod")
         ]
         return _fy_actuals
-
-    def get_company_info(self) -> CompanyInfo:
-        """Company Info"""
-        fs = self.xml_report.fin_statements
-        coids = {r.attrib["Type"]: r.text for r in fs.findall("./CoIDs/CoID")}
-        issue_id = {
-            r.attrib["Type"]: r.text for r in fs.findall("./Issues/Issue/IssueID")
-        }
-        exchange = {r.tag: r.text for r in fs.findall("./Issues/Issue/Exchange")}
-        exchange_code = {
-            "code": r.attrib["Code"] for r in fs.findall("./Issues/Issue/Exchange")
-        }
-        last_split = {
-            "last_split": fromisoformat(r.attrib.get("Date"))
-            for r in fs.findall("./Issues/Issue/MostRecentSplit")
-        }
-        stock_split = {
-            "stock_split": float(r.text)
-            for r in fs.findall("./Issues/Issue/MostRecentSplit")
-        }
-        _company_info = CompanyInfo(
-            ticker=issue_id.get("Ticker"),
-            company_name=coids.get("CompanyName"),
-            cik=coids.get("CIKNo"),
-            exchange_code=exchange_code.get("code"),
-            exchange=exchange.get("Exchange"),
-            irs=coids.get("IRSNo"),
-            last_split=last_split.get("last_split"),
-            stock_split=stock_split.get("stock_split"),
-        )
-        return _company_info
